@@ -1,27 +1,20 @@
 package com.naveen.micro_service.controller;
 
-import org.springframework.web.bind.annotation.*;
-
-import com.naveen.micro_service.dto.ApiResponse;
 import com.naveen.micro_service.dto.BookingRequest;
-import com.naveen.micro_service.dto.LoginRequest;
-import com.naveen.micro_service.dto.UserResponse;
+import com.naveen.micro_service.model.Booking;
 import com.naveen.micro_service.model.Customer;
-import com.naveen.micro_service.model.User;
 import com.naveen.micro_service.repository.BookingRepository;
 import com.naveen.micro_service.repository.CustomerRepository;
-import com.naveen.micro_service.util.JwtUtil;
 
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -34,7 +27,6 @@ public class BookingController {
     @PostMapping("/trip-type")
     public ResponseEntity<?> selectTripType(@RequestBody Map<String, String> body) {
         String tripType = body.get("tripType");
-
         List<String> validTypes = List.of("airport-transfer", "local-travel", "outstation-travel", "hourly-rentals");
 
         if (!validTypes.contains(tripType)) {
@@ -61,10 +53,9 @@ public class BookingController {
 
     @PostMapping("/outstation-twoway")
     public ResponseEntity<?> bookOutstationTwoWay(@RequestBody BookingRequest request) {
-        if (request.getReturnDateTime() == null) {
+        if (request.getReturnDateTime() == null || request.getReturnTime() == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "Return date/time is required"));
         }
-
         return createBooking(request, "outstation");
     }
 
@@ -76,16 +67,16 @@ public class BookingController {
     @GetMapping("/dashboard/{userId}")
     public ResponseEntity<?> getDashboard(@PathVariable Long userId) {
         Customer customer = customerRepository.findByUserId(userId)
-    .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
 
         long totalTrips = bookingRepository.countByCustomerId(customer.getId());
 
-        List<Customer> recentTrips = bookingRepository
-            .findTop3ByCustomerIdOrderByCreatedAtDesc(customer.getId());
+        List<Booking> recentTrips = bookingRepository
+                .findTop3ByCustomerIdOrderByCreatedAtDesc(customer.getId());
 
         return ResponseEntity.ok(Map.of(
-            "totalTrips", totalTrips,
-            "recentTrips", recentTrips
+                "totalTrips", totalTrips,
+                "recentTrips", recentTrips
         ));
     }
 
@@ -95,18 +86,19 @@ public class BookingController {
         }
 
         Customer customer = customerRepository.findById(req.getCustomerId())
-            .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        Customer booking = Customer.builder()
-            .customer(customer)
-            .type(type)
-            .pickupLoc(req.getPickupLoc())
-            .dropLoc(type.equals("hourly") ? req.getPickupLoc() : req.getDropLoc())
-            .packageHrs(req.getPackageHrs())
-            .dateTime(req.getDateTime().atTime(req.getTime()))
-            .returnDateTime(req.getReturnDateTime() != null ? req.getReturnDateTime().atTime(req.getReturnTime()) : null)
-            .status("pending")
-            .build();
+        Booking booking = Booking.builder()
+                .customer(customer)
+                .type(type)
+                .pickupLoc(req.getPickupLoc())
+                .dropLoc(type.equals("hourly") ? req.getPickupLoc() : req.getDropLoc())
+                .packageHrs(req.getPackageHrs())
+                .dateTime(LocalDateTime.of(req.getDateTime(), req.getTime()))
+                .returnDateTime((req.getReturnDateTime() != null && req.getReturnTime() != null)
+                        ? LocalDateTime.of(req.getReturnDateTime(), req.getReturnTime()) : null)
+                .status("pending")
+                .build();
 
         bookingRepository.save(booking);
 
