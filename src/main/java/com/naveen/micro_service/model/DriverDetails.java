@@ -4,24 +4,24 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
+@Table(name = "driver_details")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class Customer {
+public class DriverDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // private String name;
+    private String licenseNumber;
+    private String vehicleNumber;
+    private String vehicleType;
+    private Integer yearsOfExperience;
+    private Double rating;
 
-    // private String mobile;
-
-    // Link to User
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
-
-    // You can add more customer-specific fields here (e.g., address, preferences, etc.)
 }

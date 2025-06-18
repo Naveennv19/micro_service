@@ -1,25 +1,20 @@
 package com.naveen.micro_service.controller;
 
-
 import com.naveen.micro_service.model.Booking;
-import com.naveen.micro_service.model.Customer;
 import com.naveen.micro_service.model.User;
+// import com.naveen.micro_service.model.Customer;
 import com.naveen.micro_service.model.User.UserRole;
 import com.naveen.micro_service.repository.BookingRepository;
 import com.naveen.micro_service.repository.CustomerRepository;
 import com.naveen.micro_service.repository.UserRepository;
 import com.naveen.micro_service.util.JwtUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import java.util.Optional;
-
-
-
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -31,38 +26,36 @@ public class CustomerController {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
 
-    // ✅ Get customer profile using JWT
+    // ✅ Get customer profile using JWT token
     @GetMapping("/profile")
     public ResponseEntity<?> getCustomerProfile(HttpServletRequest request) {
         String token = extractToken(request);
         String email = jwtUtil.extractEmail(token);
-        System.out.println("Extracted email from token: " + email); // extract email from token
 
         User user = userRepository.findByEmail(email);
-        System.out.println(user);
-        System.out.println("Role: '" + user.getRole() + "'");
+        System.out.print(user);
         if (user == null || user.getRole() != UserRole.CUSTOMER) {
             return ResponseEntity.status(403).body("Only customers can access this endpoint.");
         }
-
-        System.out.println("User ID: " + user.getId());
-        Optional<Customer> customer = customerRepository.findByUserId(user.getId());
-        if (customer.isEmpty()) {
-            System.out.println("Customer not found for user ID: " + user.getId());
-}
+        
+        // Fix here: unwrap the Optional first
+        // Customer customer = customerRepository.findByEmail(email);
+        System.out.print(customerRepository.findByUserId(user.getId()));
 
         return customerRepository.findByUserId(user.getId())
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+        .<ResponseEntity<?>>map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.status(404).body("Customer profile not found for user ID: " + user.getId()));
+
     }
 
-    // ✅ Get all bookings of a customer using customerId
+    // ✅ Get all bookings of a customer by customer ID
     @GetMapping("/{id}/bookings")
     public ResponseEntity<?> getCustomerBookings(@PathVariable Long id) {
         if (!customerRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body("Customer not found with id: " + id);
         }
-        List<Booking> bookings = bookingRepository.findByCustomerId(id);
+
+        Optional<Booking> bookings = bookingRepository.findById(id);
         return ResponseEntity.ok(bookings);
     }
 
@@ -70,9 +63,8 @@ public class CustomerController {
     private String extractToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7); // Skip "Bearer "
-        } else {
-            throw new RuntimeException("Missing or invalid Authorization header");
+            return authHeader.substring(7);
         }
+        throw new RuntimeException("Missing or invalid Authorization header");
     }
 }
