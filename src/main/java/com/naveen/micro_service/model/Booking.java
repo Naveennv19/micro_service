@@ -17,11 +17,6 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Each booking is linked to a single customer
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Customer customer;
-
     // airport, local, outstation, hourly
     @Column(nullable = false)
     private String type;
