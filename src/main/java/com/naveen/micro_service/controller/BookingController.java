@@ -2,11 +2,11 @@ package com.naveen.micro_service.controller;
 
 import com.naveen.micro_service.dto.BookingRequest;
 import com.naveen.micro_service.model.Booking;
-import com.naveen.micro_service.model.Customer;
+
 import com.naveen.micro_service.model.User;
 import com.naveen.micro_service.model.User.UserRole;
 import com.naveen.micro_service.repository.BookingRepository;
-import com.naveen.micro_service.repository.CustomerRepository;
+
 import com.naveen.micro_service.repository.UserRepository;
 import com.naveen.micro_service.util.JwtAuthService;
 
@@ -23,11 +23,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
-@RequiredArgsConstructor
+
 public class BookingController {
 
     private final BookingRepository bookingRepository;
-    private final CustomerRepository customerRepository;
+
     private final UserRepository userRepository;
     private final JwtAuthService jwtAuthService;
 
