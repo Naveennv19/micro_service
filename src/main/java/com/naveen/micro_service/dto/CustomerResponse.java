@@ -17,8 +17,6 @@ public class CustomerResponse {
 
     public CustomerResponse(Customer customer) {
         this.id = customer.getId();
-        this.name = customer.getName();
-        this.mobile = customer.getMobile();
         this.userId = customer.getUser().getId();
         this.userEmail = customer.getUser().getEmail(); // ✅ assignment was missing
     }
