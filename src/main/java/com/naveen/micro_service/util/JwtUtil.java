@@ -11,9 +11,7 @@ import java.util.Date;
 public class JwtUtil {
 
     private final String SECRET_KEY = "your-secret-key-which-should-be-at-least-256-bits-long";
-
     private final long EXPIRATION_TIME = 1000 * 60 * 60; // 1 hour
-
     private final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
 
     public String generateToken(String email) {
@@ -26,16 +24,34 @@ public class JwtUtil {
     }
 
     public String extractEmail(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        try {
+            System.out.println("Token received: " + token);
+    
+            JwtParser parser = Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build();
+            System.out.println("Parser built successfully");
+    
+            Jws<Claims> claimsJws = parser.parseClaimsJws(token);
+            System.out.println("Token parsed successfully");
+    
+            String email = claimsJws.getBody().getSubject();
+            System.out.println("Extracted email (subject): " + email);
+    
+            return email;
+        } catch (JwtException e) {
+            System.out.println("JWT parsing failed: " + e.getMessage());
+            throw new RuntimeException("Invalid or expired JWT token", e);
+        }
     }
+    
 
     public boolean validateToken(String token, String email) {
-        return extractEmail(token).equals(email) && !isTokenExpired(token);
+        try {
+            return extractEmail(token).equals(email) && !isTokenExpired(token);
+        } catch (JwtException e) {
+            return false;
+        }
     }
 
     private boolean isTokenExpired(String token) {
@@ -48,8 +64,5 @@ public class JwtUtil {
         return expiration.before(new Date());
     }
 
-    public String extractUsername(String token) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'extractUsername'");
-    }
+
 }

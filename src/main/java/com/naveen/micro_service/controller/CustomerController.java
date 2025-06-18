@@ -2,6 +2,7 @@ package com.naveen.micro_service.controller;
 
 
 import com.naveen.micro_service.model.Booking;
+import com.naveen.micro_service.model.Customer;
 import com.naveen.micro_service.model.User;
 import com.naveen.micro_service.model.User.UserRole;
 import com.naveen.micro_service.repository.BookingRepository;
@@ -9,6 +10,10 @@ import com.naveen.micro_service.repository.CustomerRepository;
 import com.naveen.micro_service.repository.UserRepository;
 import com.naveen.micro_service.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import java.util.Optional;
+
+
+
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +45,11 @@ public class CustomerController {
             return ResponseEntity.status(403).body("Only customers can access this endpoint.");
         }
 
+        System.out.println("User ID: " + user.getId());
+        Optional<Customer> customer = customerRepository.findByUserId(user.getId());
+        if (customer.isEmpty()) {
+            System.out.println("Customer not found for user ID: " + user.getId());
+}
 
         return customerRepository.findByUserId(user.getId())
             .map(ResponseEntity::ok)

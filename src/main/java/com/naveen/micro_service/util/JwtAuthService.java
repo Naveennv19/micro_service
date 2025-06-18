@@ -21,7 +21,7 @@ public class JwtAuthService {
     }
 
     public String extractEmail(String token) {
-        return jwtUtil.extractUsername(token); // or extractEmail if you use that key in your token
+        return jwtUtil.extractEmail(token); // or extractEmail if you use that key in your token
     }
 
     public String extractToken(HttpServletRequest request) {
