@@ -2,10 +2,8 @@ package com.naveen.micro_service.controller;
 
 import com.naveen.micro_service.model.Booking;
 import com.naveen.micro_service.model.User;
-// import com.naveen.micro_service.model.Customer;
 import com.naveen.micro_service.model.User.UserRole;
 import com.naveen.micro_service.repository.BookingRepository;
-import com.naveen.micro_service.repository.CustomerRepository;
 import com.naveen.micro_service.repository.UserRepository;
 import com.naveen.micro_service.util.JwtUtil;
 
@@ -14,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -21,7 +20,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CustomerController {
 
-    private final CustomerRepository customerRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
@@ -33,29 +31,22 @@ public class CustomerController {
         String email = jwtUtil.extractEmail(token);
 
         User user = userRepository.findByEmail(email);
-        System.out.print(user);
         if (user == null || user.getRole() != UserRole.CUSTOMER) {
             return ResponseEntity.status(403).body("Only customers can access this endpoint.");
         }
-        
-        // Fix here: unwrap the Optional first
-        // Customer customer = customerRepository.findByEmail(email);
-        System.out.print(customerRepository.findByUserId(user.getId()));
 
-        return customerRepository.findByUserId(user.getId())
-        .<ResponseEntity<?>>map(ResponseEntity::ok)
-        .orElseGet(() -> ResponseEntity.status(404).body("Customer profile not found for user ID: " + user.getId()));
-
+        return ResponseEntity.ok(user);
     }
 
     // ✅ Get all bookings of a customer by customer ID
     @GetMapping("/{id}/bookings")
     public ResponseEntity<?> getCustomerBookings(@PathVariable Long id) {
-        if (!customerRepository.existsById(id)) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty() || userOpt.get().getRole() != UserRole.CUSTOMER) {
             return ResponseEntity.status(404).body("Customer not found with id: " + id);
         }
 
-        Optional<Booking> bookings = bookingRepository.findById(id);
+        List<Booking> bookings = bookingRepository.findAllByCustomerId(id);
         return ResponseEntity.ok(bookings);
     }
 

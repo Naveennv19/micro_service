@@ -46,4 +46,12 @@ public class Booking {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
+    @ManyToOne
+    @JoinColumn(name = "customer_id", nullable = false)
+    private User customer;
+
+    @ManyToOne
+    @JoinColumn(name = "driver_id")
+    private User driver;
 }
