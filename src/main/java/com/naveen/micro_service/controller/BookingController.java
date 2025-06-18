@@ -2,11 +2,9 @@ package com.naveen.micro_service.controller;
 
 import com.naveen.micro_service.dto.BookingRequest;
 import com.naveen.micro_service.model.Booking;
-
 import com.naveen.micro_service.model.User;
 import com.naveen.micro_service.model.User.UserRole;
 import com.naveen.micro_service.repository.BookingRepository;
-
 import com.naveen.micro_service.repository.UserRepository;
 import com.naveen.micro_service.util.JwtAuthService;
 
@@ -23,11 +21,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
-
+@RequiredArgsConstructor
 public class BookingController {
 
     private final BookingRepository bookingRepository;
-
     private final UserRepository userRepository;
     private final JwtAuthService jwtAuthService;
 
@@ -40,8 +37,8 @@ public class BookingController {
         throw new RuntimeException("Missing or invalid Authorization header");
     }
 
-    // ✅ Extract authenticated Customer using JwtAuthService
-    private Customer getAuthenticatedCustomer(HttpServletRequest request) {
+    // ✅ Extract authenticated customer (User with CUSTOMER role)
+    private User getAuthenticatedCustomer(HttpServletRequest request) {
         String token = extractToken(request);
         String email = jwtAuthService.extractEmail(token);
         User user = userRepository.findByEmail(email);
@@ -50,11 +47,10 @@ public class BookingController {
             throw new RuntimeException("Only customers can access this endpoint");
         }
 
-        return customerRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Customer profile not found"));
+        return user;
     }
 
-    // ✅ Trip type validation
+    // ✅ Validate trip type
     @PostMapping("/trip-type")
     public ResponseEntity<?> selectTripType(@RequestBody Map<String, String> body) {
         String tripType = body.get("tripType");
@@ -67,7 +63,7 @@ public class BookingController {
         return ResponseEntity.ok(Map.of("message", "Trip type selected: " + tripType));
     }
 
-    // Booking endpoints using token-based customer identity
+    // ✅ Booking endpoints
     @PostMapping("/airport")
     public ResponseEntity<?> bookAirport(@RequestBody BookingRequest request, HttpServletRequest httpRequest) {
         return createBooking(request, httpRequest, "airport");
@@ -96,14 +92,13 @@ public class BookingController {
         return createBooking(request, httpRequest, "hourly");
     }
 
-    // Customer Dashboard (secured)
+    // ✅ Dashboard for customers
     @GetMapping("/dashboard")
     public ResponseEntity<?> getDashboard(HttpServletRequest request) {
-        Customer customer = getAuthenticatedCustomer(request);
+        User customer = getAuthenticatedCustomer(request);
 
-        long totalTrips = bookingRepository.countByCustomerId(customer.getId());
-        List<Booking> recentTrips = bookingRepository
-                .findTop3ByCustomerIdOrderByCreatedAtDesc(customer.getId());
+        long totalTrips = bookingRepository.countByCustomer(customer);
+        List<Booking> recentTrips = bookingRepository.findTop3ByCustomerOrderByCreatedAtDesc(customer);
 
         return ResponseEntity.ok(Map.of(
                 "totalTrips", totalTrips,
@@ -111,13 +106,13 @@ public class BookingController {
         ));
     }
 
-    // Central booking logic
+    // ✅ Core booking logic
     private ResponseEntity<?> createBooking(BookingRequest req, HttpServletRequest httpRequest, String type) {
         if (req.getPickupLoc() == null || req.getDateTime() == null || req.getTime() == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "Missing required fields"));
         }
 
-        Customer customer = getAuthenticatedCustomer(httpRequest);
+        User customer = getAuthenticatedCustomer(httpRequest);
 
         Booking booking = Booking.builder()
                 .customer(customer)
