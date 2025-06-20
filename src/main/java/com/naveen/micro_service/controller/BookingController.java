@@ -2,6 +2,7 @@ package com.naveen.micro_service.controller;
 
 import com.naveen.micro_service.dto.BookingRequest;
 import com.naveen.micro_service.model.Booking;
+import com.naveen.micro_service.model.Booking.BookingType;
 import com.naveen.micro_service.model.User;
 import com.naveen.micro_service.model.User.UserRole;
 import com.naveen.micro_service.repository.BookingRepository;
@@ -10,7 +11,6 @@ import com.naveen.micro_service.util.JwtAuthService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +28,7 @@ public class BookingController {
     private final UserRepository userRepository;
     private final JwtAuthService jwtAuthService;
 
-    // ✅ Extract Bearer token from header
+    // ✅ Extract Bearer token
     private String extractToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -37,59 +37,60 @@ public class BookingController {
         throw new RuntimeException("Missing or invalid Authorization header");
     }
 
-    // ✅ Extract authenticated customer (User with CUSTOMER role)
+    // ✅ Authenticated CUSTOMER
     private User getAuthenticatedCustomer(HttpServletRequest request) {
         String token = extractToken(request);
         String email = jwtAuthService.extractEmail(token);
         User user = userRepository.findByEmail(email);
 
         if (user == null || user.getRole() != UserRole.CUSTOMER) {
-            throw new RuntimeException("Only customers can access this endpoint");
+            throw new RuntimeException("Only customers can book rides");
         }
 
         return user;
     }
 
-    // ✅ Validate trip type
-    @PostMapping("/trip-type")
-    public ResponseEntity<?> selectTripType(@RequestBody Map<String, String> body) {
-        String tripType = body.get("tripType");
-        List<String> validTypes = List.of("airport", "local", "outstation", "hourly");
+    // ✅ Validate booking type (optional endpoint)
+    @PostMapping("/validate-type")
+    public ResponseEntity<?> validateType(@RequestBody Map<String, String> body) {
+        String typeStr = body.get("tripType");
+        try {
+            BookingType type = BookingType.valueOf(typeStr.toUpperCase());
+            return ResponseEntity.ok(Map.of("message", "Valid trip type: " + type.name()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid booking type"));
+        }
+    }
 
-        if (!validTypes.contains(tripType)) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid trip type"));
+    // ✅ Single endpoint to handle booking based on BookingType
+    @PostMapping("/create")
+    public ResponseEntity<?> createBooking(@RequestBody BookingRequest req, HttpServletRequest request) {
+        if (req.getType() == null || req.getPickupLoc() == null || req.getDateTime() == null || req.getTime() == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Missing required fields"));
         }
 
-        return ResponseEntity.ok(Map.of("message", "Trip type selected: " + tripType));
-    }
+        User customer = getAuthenticatedCustomer(request);
 
-    // ✅ Booking endpoints
-    @PostMapping("/airport")
-    public ResponseEntity<?> bookAirport(@RequestBody BookingRequest request, HttpServletRequest httpRequest) {
-        return createBooking(request, httpRequest, "airport");
-    }
+        Booking booking = Booking.builder()
+                .customer(customer)
+                .type(req.getType())
+                .pickupLoc(req.getPickupLoc())
+                .dropLoc(req.getType() == BookingType.RENTAL_HOURS ? req.getPickupLoc() : req.getDropLoc())
+                .packageHrs(req.getPackageHrs())
+                .dateTime(LocalDateTime.of(req.getDateTime(), req.getTime()))
+                .returnDateTime(
+                        (req.getReturnDateTime() != null && req.getReturnTime() != null)
+                                ? LocalDateTime.of(req.getReturnDateTime(), req.getReturnTime())
+                                : null)
+                .status("pending")
+                .build();
 
-    @PostMapping("/local")
-    public ResponseEntity<?> bookLocal(@RequestBody BookingRequest request, HttpServletRequest httpRequest) {
-        return createBooking(request, httpRequest, "local");
-    }
+        bookingRepository.save(booking);
 
-    @PostMapping("/outstation-oneway")
-    public ResponseEntity<?> bookOutstationOneWay(@RequestBody BookingRequest request, HttpServletRequest httpRequest) {
-        return createBooking(request, httpRequest, "outstation");
-    }
-
-    @PostMapping("/outstation-twoway")
-    public ResponseEntity<?> bookOutstationTwoWay(@RequestBody BookingRequest request, HttpServletRequest httpRequest) {
-        if (request.getReturnDateTime() == null || request.getReturnTime() == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Return date/time is required"));
-        }
-        return createBooking(request, httpRequest, "outstation");
-    }
-
-    @PostMapping("/hourly")
-    public ResponseEntity<?> bookHourly(@RequestBody BookingRequest request, HttpServletRequest httpRequest) {
-        return createBooking(request, httpRequest, "hourly");
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", req.getType().name().toLowerCase().replace("_", " ") + " booked successfully",
+                "bookingId", booking.getId()
+        ));
     }
 
     // ✅ Dashboard for customers
@@ -103,33 +104,6 @@ public class BookingController {
         return ResponseEntity.ok(Map.of(
                 "totalTrips", totalTrips,
                 "recentTrips", recentTrips
-        ));
-    }
-
-    // ✅ Core booking logic
-    private ResponseEntity<?> createBooking(BookingRequest req, HttpServletRequest httpRequest, String type) {
-        if (req.getPickupLoc() == null || req.getDateTime() == null || req.getTime() == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Missing required fields"));
-        }
-
-        User customer = getAuthenticatedCustomer(httpRequest);
-
-        Booking booking = Booking.builder()
-                .customer(customer)
-                .type(type)
-                .pickupLoc(req.getPickupLoc())
-                .dropLoc(type.equals("hourly") ? req.getPickupLoc() : req.getDropLoc())
-                .packageHrs(req.getPackageHrs())
-                .dateTime(LocalDateTime.of(req.getDateTime(), req.getTime()))
-                .returnDateTime((req.getReturnDateTime() != null && req.getReturnTime() != null)
-                        ? LocalDateTime.of(req.getReturnDateTime(), req.getReturnTime()) : null)
-                .status("pending")
-                .build();
-
-        bookingRepository.save(booking);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "message", type + " booked successfully",
-                "bookingId", booking.getId()
         ));
     }
 }

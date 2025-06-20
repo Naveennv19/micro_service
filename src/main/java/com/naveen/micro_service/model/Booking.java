@@ -13,13 +13,20 @@ import java.time.LocalDateTime;
 @Builder
 public class Booking {
 
+    public enum BookingType {
+        AIRPORT_TRAVEL,
+        LOCAL_TRAVEL,
+        OUTSTATION_TRAVEL,
+        RENTAL_HOURS
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // airport, local, outstation, hourly
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String type;
+    private BookingType type;
 
     @Column(name = "pickup_loc", nullable = false)
     private String pickupLoc;
@@ -37,7 +44,7 @@ public class Booking {
     private LocalDateTime returnDateTime;
 
     @Column(nullable = false)
-    private String status; // pending, confirmed, cancelled, etc.
+    private String status; // pending, assigned, current, completed etc.
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -55,3 +62,8 @@ public class Booking {
     @JoinColumn(name = "driver_id")
     private User driver;
 }
+
+
+
+
+
