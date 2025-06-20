@@ -20,6 +20,13 @@ public class Booking {
         RENTAL_HOURS
     }
 
+    public enum BookingStatus {
+        PENDING,
+        ASSIGNED,
+        CURRENT,
+        COMPLETED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,10 +36,10 @@ public class Booking {
     private BookingType type;
 
     @Column(name = "pickup_loc", nullable = false)
-    private String pickupLoc;
+    private String pickupLocation;
 
     @Column(name = "drop_loc")
-    private String dropLoc;
+    private String dropLocation;
 
     @Column(name = "package_hrs")
     private String packageHrs;
@@ -43,8 +50,9 @@ public class Booking {
     @Column(name = "return_date_time")
     private LocalDateTime returnDateTime;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status; // pending, assigned, current, completed etc.
+    private BookingStatus status; // pending, assigned, current, completed etc.
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

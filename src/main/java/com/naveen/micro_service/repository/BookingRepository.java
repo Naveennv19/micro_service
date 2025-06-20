@@ -9,6 +9,8 @@ import java.util.List;
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findTop3ByCustomerOrderByCreatedAtDesc(User customer);
     long countByCustomer(User customer);
+    List<Booking> findByCustomer(User customer);
+    List<Booking> findByCustomerAndStatus(User customer, Booking.BookingStatus status); 
 
     List<Booking> findAllByCustomerId(Long customerId);
 }
