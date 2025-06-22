@@ -52,7 +52,7 @@ public class Booking {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private BookingStatus status; // pending, assigned, current, completed etc.
+    private BookingStatus status; // PENDING, ASSIGNED, CURRENT, COMPLETED
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -70,8 +70,3 @@ public class Booking {
     @JoinColumn(name = "driver_id")
     private User driver;
 }
-
-
-
-
-

@@ -17,7 +17,7 @@ public class User {
     }
 
     public enum UserStatus {
-        AVAILABLE, ON_TRIP, INACTIVE
+        AVAILABLE, ON_TRIP
     }
 
     @Id
