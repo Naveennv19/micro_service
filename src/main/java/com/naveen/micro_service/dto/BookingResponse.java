@@ -13,4 +13,6 @@ public class BookingResponse {
     private String time;
     private String status;
     private Long driverId;
+    private String driverName;
+    private String customerName;
 }

@@ -9,6 +9,7 @@ import com.naveen.micro_service.repository.UserRepository;
 import com.naveen.micro_service.service.UserService;
 import com.naveen.micro_service.util.JwtUtil;
 
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/user")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -44,11 +45,14 @@ public class UserController {
         }
     }
 
+
     // 🟢 LOGOUT
     @PostMapping("/logout")
     public ResponseEntity<String> logoutUser() {
         return ResponseEntity.ok("Successfully logged out. Please delete the token on the client side.");
     }
+
+
 
     // 🟢 GET USER BY ID
     @GetMapping("/{id}")
