@@ -11,6 +11,8 @@ import com.naveen.micro_service.util.JwtAuthService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,39 +77,50 @@ public class BookingController {
         ));
     }
 
-    @PostMapping("/booking/filter")
-    public ResponseEntity<?> getBookingsForCustomer(@RequestBody Map<String, String> filter,HttpServletRequest request) {
+    @GetMapping("/booking")
+    public ResponseEntity<?> getBookingsForUser(
+            @RequestParam(value = "bookingStatus", required = false) String statusStr,
+            HttpServletRequest request) {
 
-    User customer = jwtAuthService.getAuthenticatedUser(request);
+        User user = jwtAuthService.getAuthenticatedUser(request);
 
-    String statusStr = filter.get("bookingStatus");
-    BookingStatus status = null;
-    if (statusStr != null && !statusStr.isBlank()) {
-        try {
-            status = BookingStatus.valueOf(statusStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid booking status: " + statusStr);
+        BookingStatus status = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                status = BookingStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("Invalid booking status: " + statusStr);
+            }
         }
+
+        List<Booking> bookings;
+
+        if (user.getRole() == User.UserRole.CUSTOMER) {
+            bookings = (status != null)
+                    ? bookingRepository.findByCustomerAndStatus(user, status)
+                    : bookingRepository.findByCustomer(user);
+        } else if (user.getRole() == User.UserRole.DRIVER) {
+            bookings = (status != null)
+                    ? bookingRepository.findByCustomerAndStatus(user, status)
+                    : bookingRepository.findByCustomer(user);
+        } else {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Role not supported for bookings");
+        }
+
+        List<BookingResponse> response = bookings.stream().map(b -> BookingResponse.builder()
+                .id(b.getId())
+                .pickupLocation(b.getPickupLocation())
+                .dropLocation(b.getDropLocation())
+                .date(b.getDateTime().toLocalDate().toString())
+                .time(b.getDateTime().toLocalTime().toString())
+                .status(b.getStatus().toString())
+                .driverId(b.getDriver() != null ? b.getDriver().getId() : null)
+                .driverName(b.getDriver() != null ? b.getDriver().getName() : null)
+                .customerName(b.getCustomer().getName())
+                .build()
+        ).collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
     }
 
-    List<Booking> bookings;
-    if (status != null) {
-        bookings = bookingRepository.findByCustomerAndStatus(customer, status);
-    } else {
-        bookings = bookingRepository.findByCustomer(customer);
-    }
-
-    List<BookingResponse> response = bookings.stream().map(b -> BookingResponse.builder()
-        .id(b.getId())
-        .pickupLocation(b.getPickupLocation())
-        .dropLocation(b.getDropLocation())
-        .date(b.getDateTime().toLocalDate().toString())
-        .time(b.getDateTime().toLocalTime().toString())
-        .status(b.getStatus().toString())
-        .driverId(b.getDriver() != null ? b.getDriver().getId() : null)
-        .build()
-    ).collect(Collectors.toList());
-    return ResponseEntity.ok(response); 
-
-    }
 }
