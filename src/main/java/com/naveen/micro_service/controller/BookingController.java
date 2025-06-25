@@ -114,6 +114,7 @@ public class BookingController {
                 .date(b.getDateTime().toLocalDate().toString())
                 .time(b.getDateTime().toLocalTime().toString())
                 .status(b.getStatus().toString())
+                .rideType(b.getType().toString())
                 .driverId(b.getDriver() != null ? b.getDriver().getId() : null)
                 .driverName(b.getDriver() != null ? b.getDriver().getName() : null)
                 .customerName(b.getCustomer().getName())

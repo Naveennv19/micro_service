@@ -11,7 +11,7 @@ import java.util.Date;
 public class JwtUtil {
 
     private final String SECRET_KEY = "your-secret-key-which-should-be-at-least-256-bits-long";
-    private final long EXPIRATION_TIME = 1000 * 60 * 60; // 1 hour
+    private final long EXPIRATION_TIME = 1000L * 60 * 60 * 24 * 7; // 7 days
     private final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
 
     public String generateToken(String email) {
