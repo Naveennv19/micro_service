@@ -1,6 +1,7 @@
 package com.naveen.micro_service.controller;
 
 import com.naveen.micro_service.dto.AssignDriverRequest;
+import com.naveen.micro_service.dto.BookingResponse;
 import com.naveen.micro_service.model.Booking;
 import com.naveen.micro_service.model.User;
 import com.naveen.micro_service.model.User.UserRole;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("api/admin")
@@ -90,5 +92,32 @@ public class AdminController {
 
 
     }
+    @GetMapping("/bookings")
+public ResponseEntity<?> getAllBookings(HttpServletRequest request) {
+    User admin = jwtAuthService.getAuthenticatedUser(request);
+
+    if (admin == null || admin.getRole() != User.UserRole.ADMIN) {
+        return ResponseEntity.status(403).body("Access denied. Only admins can view bookings.");
+    }
+
+    List<Booking> bookings = bookingRepository.findAll();
+
+    List<BookingResponse> response = bookings.stream().map(b -> BookingResponse.builder()
+            .id(b.getId())
+            .pickupLocation(b.getPickupLocation())
+            .dropLocation(b.getDropLocation())
+            .date(b.getDateTime().toLocalDate().toString())
+            .time(b.getDateTime().toLocalTime().toString())
+            .status(b.getStatus().toString().toLowerCase())
+            .rideType(b.getType().toString().toLowerCase())
+            .driverId(b.getDriver() != null ? b.getDriver().getId() : null)
+            .driverName(b.getDriver() != null ? b.getDriver().getName() : null)
+            .customerName(b.getCustomer().getName())
+            .build())
+        .collect(Collectors.toList());
+
+    return ResponseEntity.ok(response);
+}
+
 
 }

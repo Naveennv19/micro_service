@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -33,17 +34,26 @@ public class UserController {
     }
 
     // 🟢 LOGIN
-    @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
-        User user = userRepository.findByEmail(loginRequest.getEmail());
+  @PostMapping("/login")
+public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
+    User user = userRepository.findByEmail(loginRequest.getEmail());
 
-        if (user != null && user.getPassword().equals(loginRequest.getPassword())) {
-            String token = jwtUtil.generateToken(user.getEmail());
-            return ResponseEntity.ok(Map.of("token", token));
-        } else {
-            return ResponseEntity.status(401).body("Invalid email or password");
-        }
+    if (user != null && user.getPassword().equals(loginRequest.getPassword())) {
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("id", user.getId());
+        response.put("name", user.getName());
+        response.put("email", user.getEmail());
+        response.put("phone", user.getPhone());
+        response.put("role", user.getRole().toString());
+
+        return ResponseEntity.ok(response);
+    } else {
+        return ResponseEntity.status(401).body("Invalid email or password");
     }
+}
 
 
     // 🟢 LOGOUT
