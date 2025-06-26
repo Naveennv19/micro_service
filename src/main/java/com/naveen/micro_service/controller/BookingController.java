@@ -7,6 +7,7 @@ import com.naveen.micro_service.model.User;
 import com.naveen.micro_service.model.Booking.BookingStatus;
 import com.naveen.micro_service.model.Booking.BookingType;
 import com.naveen.micro_service.repository.BookingRepository;
+import com.naveen.micro_service.repository.UserRepository;
 import com.naveen.micro_service.util.JwtAuthService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,36 +29,32 @@ public class BookingController {
 
     private final BookingRepository bookingRepository;
     private final JwtAuthService jwtAuthService;
+    private final UserRepository userRepository;
 
     @PostMapping("/booking")
     public ResponseEntity<?> createBooking(@RequestBody BookingRequest request, HttpServletRequest httpRequest) {
-        // ✅ Get authenticated customer
         User customer = jwtAuthService.getAuthenticatedUser(httpRequest);
 
         if (!customer.getRole().equals(User.UserRole.CUSTOMER)) {
             return ResponseEntity.status(403).body("Only customers can book rides");
         }
 
-        // ✅ Validate booking type
         BookingType type = request.getType();
         if (type == null) {
             return ResponseEntity.badRequest().body("Booking type is required");
         }
 
-        // ✅ Combine date and time
         if (request.getDateTime() == null || request.getTime() == null) {
             return ResponseEntity.badRequest().body("Booking date and time are required");
         }
 
         LocalDateTime dateTime = LocalDateTime.of(request.getDateTime(), request.getTime());
 
-        // ✅ Optionally handle return time (for outstation/rental if needed)
         LocalDateTime returnDateTime = null;
         if (request.getReturnDateTime() != null && request.getReturnTime() != null) {
             returnDateTime = LocalDateTime.of(request.getReturnDateTime(), request.getReturnTime());
         }
 
-        // ✅ Build booking
         Booking booking = Booking.builder()
                 .type(type)
                 .pickupLocation(request.getPickupLoc())
@@ -101,8 +98,8 @@ public class BookingController {
                     : bookingRepository.findByCustomer(user);
         } else if (user.getRole() == User.UserRole.DRIVER) {
             bookings = (status != null)
-                    ? bookingRepository.findByCustomerAndStatus(user, status)
-                    : bookingRepository.findByCustomer(user);
+                    ? bookingRepository.findByDriverAndStatus(user, status)
+                    : bookingRepository.findByDriver(user);
         } else {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Role not supported for bookings");
         }
@@ -113,8 +110,8 @@ public class BookingController {
                 .dropLocation(b.getDropLocation())
                 .date(b.getDateTime().toLocalDate().toString())
                 .time(b.getDateTime().toLocalTime().toString())
-                .status(b.getStatus().toString())
-                .rideType(b.getType().toString())
+                .status(b.getStatus().toString().toLowerCase())
+                .rideType(b.getType().toString().toLowerCase())
                 .driverId(b.getDriver() != null ? b.getDriver().getId() : null)
                 .driverName(b.getDriver() != null ? b.getDriver().getName() : null)
                 .customerName(b.getCustomer().getName())
@@ -124,4 +121,31 @@ public class BookingController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/driver/complete-booking/{bookingId}")
+    public ResponseEntity<?> completeBookingByDriver(@PathVariable Long bookingId, HttpServletRequest request) {
+        User driver = jwtAuthService.getAuthenticatedUser(request);
+
+        if (driver == null || driver.getRole() != User.UserRole.DRIVER) {
+            return ResponseEntity.status(403).body("Access denied. Only drivers can complete rides.");
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!driver.equals(booking.getDriver())) {
+            return ResponseEntity.status(403).body("This booking is not assigned to you.");
+        }
+
+        if (booking.getStatus() != Booking.BookingStatus.ASSIGNED) {
+            return ResponseEntity.badRequest().body("Only assigned bookings can be marked as completed.");
+        }
+
+        booking.setStatus(Booking.BookingStatus.COMPLETED);
+        driver.setStatus(User.UserStatus.AVAILABLE);
+
+        userRepository.save(driver);
+        bookingRepository.save(booking);
+
+        return ResponseEntity.ok(Map.of("message", "Booking marked as completed"));
+    }
 }
